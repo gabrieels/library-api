@@ -3,9 +3,11 @@ package com.treinamento.springboot.libraryapi.api.resource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.treinamento.springboot.libraryapi.api.dto.BookDTO;
 import com.treinamento.springboot.libraryapi.api.model.entity.Book;
+import com.treinamento.springboot.libraryapi.exception.BusinessException;
 import com.treinamento.springboot.libraryapi.service.BookService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.BDDMockito;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -27,19 +29,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @WebMvcTest // serve para testes unitarios
 @AutoConfigureMockMvc
-public class BookControllerTest {
+class BookControllerTest {
 
     @Autowired
     private MockMvc mockMvc; // ira mocar as requisicoes da api
-    private static String BOOK_API = "/api/books";
+    private static final String BOOK_API = "/api/books";
     @MockBean
     private BookService bookServiceMock;
 
     @Test
-    public void deveriaCriarUmLivroComSucesso() throws Exception {
+    void deveriaCriarUmLivroComSucesso() throws Exception {
 
         // cenario
-        BookDTO bookDTO = BookDTO.builder().author("Arthur").title("As aventuras").isbn("001").build();
+        BookDTO bookDTO = createNewBook();
         String json = new ObjectMapper().writeValueAsString(bookDTO);
         Book bookEsperado = Book.builder().id(10l).author("Arthur").title("As aventuras").isbn("001").build();
 
@@ -65,7 +67,7 @@ public class BookControllerTest {
     }
 
     @Test
-    public void deveriaLancarErroDeValicao() throws Exception {
+    void deveriaLancarErroDeValicao() throws Exception {
         String json = new ObjectMapper().writeValueAsString(new BookDTO());
 
         MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders
@@ -80,4 +82,29 @@ public class BookControllerTest {
                 .andExpect(jsonPath("errors", hasSize(3)));
     }
 
+    @Test
+    void deveriaLancarErroAoTentarCadastrarUmLivroComSbnExistente() throws Exception {
+        BookDTO bookDTO = createNewBook();
+        String json = new ObjectMapper().writeValueAsString(bookDTO);
+
+        BDDMockito.given(bookServiceMock.save(Mockito.any(Book.class)))
+                .willThrow(new BusinessException("ISBN já cadastrado"));
+
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders
+                .post(BOOK_API)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content(json);
+
+        mockMvc
+                .perform(requestBuilder)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("errors", hasSize(1)))
+                .andExpect(jsonPath("errors[0]").value("ISBN já cadastrado"));
+
+    }
+
+    private static BookDTO createNewBook() {
+        return BookDTO.builder().author("Arthur").title("As aventuras").isbn("001").build();
+    }
 }

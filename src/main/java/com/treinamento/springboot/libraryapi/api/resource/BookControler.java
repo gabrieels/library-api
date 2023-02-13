@@ -3,6 +3,7 @@ package com.treinamento.springboot.libraryapi.api.resource;
 import com.treinamento.springboot.libraryapi.api.dto.BookDTO;
 import com.treinamento.springboot.libraryapi.api.exception.ApiErros;
 import com.treinamento.springboot.libraryapi.api.model.entity.Book;
+import com.treinamento.springboot.libraryapi.exception.BusinessException;
 import com.treinamento.springboot.libraryapi.service.BookService;
 import jakarta.validation.Valid;
 import org.modelmapper.ModelMapper;
@@ -13,12 +14,12 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/books")
-public class BoockControler {
+public class BookControler {
 
     private BookService bookService;
     private ModelMapper modelMapper;
 
-    public BoockControler(BookService bookService, ModelMapper modelMapper) {
+    public BookControler(BookService bookService, ModelMapper modelMapper) {
         this.bookService = bookService;
         this.modelMapper = modelMapper;
     }
@@ -36,5 +37,12 @@ public class BoockControler {
     public ApiErros handleValidationExceptions(MethodArgumentNotValidException ex) {
         BindingResult bindingResult = ex.getBindingResult();
         return new ApiErros(bindingResult);
+    }
+
+
+    @ExceptionHandler(BusinessException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiErros handleBusinessExpection(BusinessException ex) {
+        return new ApiErros(ex);
     }
 }
